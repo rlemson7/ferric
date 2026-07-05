@@ -1,0 +1,464 @@
+/* Ferric GUI — minimal layered theme. */
+
+.root {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+/* ParamSlider fill bar — medium accent so the value label reads clearly.
+   Match nih_plug_vizia's default selector specificity so this overrides
+   the built-in dark-grey fill. Multiple selectors cover different vizia
+   versions that have used either ".fill" or ".filled". */
+param-slider > .fill,
+param-slider > .filled,
+param-slider .fill,
+param-slider .filled {
+     background-image: linear-gradient(90deg, #2f3741 0%, #7c93b4 100%);
+     border-color: #305e9f;
+}
+
+/* Rounded slider boxes — matches the toggle/textbox/dropdown 4px
+   radius so all controls share one shape language. Borderless so
+   adjacent sliders don't read as a doubled line. */
+param-slider {
+    background-color: #000000;
+    border-width: 0;
+    border-radius: 4px;
+    color: #ffffff;
+}
+
+scope-view {
+    background-color: #000000;
+    border-radius: 4px;
+}
+
+tape-view {
+    background-color: #000000;
+    border-radius: 4px;
+}
+
+.app-title {
+    font-size: 28;
+    color: #ffffff;
+}
+
+.subtitle {
+    font-size: 11;
+    color: #6a8eb8;
+}
+
+/* Tagline directly under the logo. Bright theme accent (blue in Classic,
+   phosphor green in Terminal) so it reads as part of the brand mark. */
+.logo-subtitle {
+    font-size: 9;
+    color: #4090ff;
+}
+
+.root.theme-terminal .logo-subtitle {
+    color: #6ee7a8;
+}
+
+/* Section panels share the same subtle vertical gradient — lighter
+   slate-blue at the top, deeper at the bottom — for a Valhalla-style
+   raised feel. background-color is the fallback if the host's vizia
+   build doesn't render gradients. */
+.panel,
+.tape-panel,
+.scope-panel {
+    background-color: #000000;
+    background-image: linear-gradient(180deg, #1f4c8b 0%, #03081a 100%);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: #305e9f;
+}
+
+/* Modulation panel — deeper, darker gradient. Visually distinguishes
+   modulation sources from the audio-path panels. */
+.modulation-panel {
+    background-color: #0c4ba0;
+    background-image: linear-gradient(180deg, #0d3a7a 0%, #03081a 100%);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: #305e9f;
+}
+
+.panel-title {
+    font-size: 10;
+    color: #ffffff;
+}
+
+.param-label {
+    font-size: 10;
+    color: #ffffff;
+}
+
+.footer-text {
+    font-size: 10;
+    color: #6a8eb8;
+}
+
+/* Unchecked toggle base — gives the buttons a visible outline so they
+   read as buttons rather than floating labels. The .toggle.{kind}:checked
+   rules below override the background to highlight the active state. */
+.toggle {
+    background-color: #000000;
+    border-width: 1px;
+    border-color: #0a0a0a;
+    border-radius: 4px;
+    color: #ffffff;
+}
+
+.toggle:hover {
+    border-color: #5a6a82;
+    background-color: #1c2030;
+}
+
+.toggle.hold:checked {
+    background-color: #5ff2c8;
+    border-color: #5ff2c8;
+    color: #050505;
+}
+
+.toggle.add:checked {
+    background-color: #f25f5f;
+    border-color: #f25f5f;
+    color: #050505;
+}
+
+.toggle.reverse:checked {
+    background-color: #b35ff2;
+    border-color: #b35ff2;
+    color: #050505;
+}
+
+/* "Save" — solid button in the same family as the toggles, but
+   always-on visually since it's a momentary trigger. */
+.toggle.preset-btn {
+    color: #cfd9e8;
+}
+
+/* Preset picker — a hand-built Dropdown (not vizia's PickList, which
+   double-borders). One element to style: `dropdown`. The popup that
+   appears on click and its inner labels need their own dark colors
+   because `ViziaTheming::Custom` skips vizia's bundled dark theme. */
+dropdown {
+    background-color: #000000;
+    border-width: 1px;
+    border-color: #305e9f;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 11;
+}
+
+dropdown:hover {
+    border-color: #5a6a82;
+    background-color: #1c2030;
+}
+
+dropdown .title,
+dropdown label {
+    color: #ffffff;
+    font-size: 11;
+}
+
+dropdown popup {
+    background-color: #000000;
+    border-width: 1px;
+    border-color: #305e9f;
+    border-radius: 4px;
+    width: 100%;
+    height: auto;
+    z-index: 100;
+}
+
+dropdown list label,
+dropdown .list label {
+    width: 100%;
+    height: 22px;
+    color: #cfd9e8;
+    background-color: transparent;
+    child-left: 8px;
+    child-top: 1s;
+    child-bottom: 1s;
+    cursor: hand;
+    font-size: 11;
+}
+
+dropdown list label:hover,
+dropdown .list label:hover {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+textbox {
+    background-color: #000000;
+    border-width: 1px;
+    border-color: #305e9f;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 11;
+    child-left: 8px;
+    child-right: 8px;
+    child-top: 1s;
+    child-bottom: 1s;
+}
+
+textbox:hover {
+    border-color: #305e9f;
+}
+
+textbox:focus,
+textbox:focus-visible {
+    border-color: #5fa8f2;
+    outline-width: 0;
+}
+
+/* Subdued slider variant for the SCALE picker — desaturated, no accent
+   fill so it doesn't compete with the audio params for attention. */
+param-slider.subtle {
+    background-color: #000000;
+    border-color: #1f242c;
+    color: #6a7a92;
+    font-size: 10;
+}
+
+param-slider.subtle > .fill,
+param-slider.subtle > .filled,
+param-slider.subtle .fill,
+param-slider.subtle .filled {
+    background-color: #2a3a52;
+}
+
+/* --- Settings modal --- */
+
+/* Settings icon — an HStack with three small Element circles inside.
+   Transparent background; only a soft hover wash on the box itself. */
+.settings-btn {
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    border-radius: 4px;
+    cursor: hand;
+}
+
+.settings-btn:hover {
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+.settings-dot {
+    background-color: #6a8eb8;
+    width: 3px;
+    height: 3px;
+    border-radius: 1.5px;
+    top: 1s;
+    bottom: 1s;
+}
+
+.settings-btn:hover .settings-dot {
+    background-color: #ffffff;
+}
+
+.root.theme-terminal .settings-btn:hover {
+    background-color: rgba(94, 232, 160, 0.10);
+}
+
+.root.theme-terminal .settings-dot {
+    background-color: #4a8a6a;
+}
+
+.root.theme-terminal .settings-btn:hover .settings-dot {
+    background-color: #6ee7a8;
+}
+
+.settings-backdrop {
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+.settings-overlay {
+    background-color: #0e1a30;
+    background-image: linear-gradient(180deg, #1a2a4a 0%, #050a1a 100%);
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: #2a4a7a;
+    color: #ffffff;
+}
+
+.settings-overlay .app-title {
+    font-size: 22;
+}
+
+.settings-overlay .subtitle {
+    font-size: 11;
+    color: #8aa6c8;
+}
+
+.settings-overlay .footer-text {
+    font-size: 10;
+    color: #6a8eb8;
+}
+
+.settings-overlay .panel-title {
+    font-size: 10;
+    color: #ffffff;
+}
+
+.toggle.theme-pick {
+    background-color: #15181f;
+    border-color: #3a4a62;
+    color: #ffffff;
+}
+
+.toggle.theme-pick:checked {
+    background-color: #d97706;
+    border-color: #d97706;
+    color: #050505;
+}
+
+/* --- Terminal theme — green-on-black phosphor terminal aesthetic. ---
+   The class lives on the .root element so all descendants inherit. */
+
+.root.theme-terminal {
+    background-color: #0a1410;
+    color: #6ee7a8;
+}
+
+.root.theme-terminal .app-title,
+.root.theme-terminal .subtitle,
+.root.theme-terminal .panel-title,
+.root.theme-terminal .param-label {
+    color: #6ee7a8;
+}
+
+.root.theme-terminal .footer-text {
+    color: #4a8a6a;
+}
+
+.root.theme-terminal .panel,
+.root.theme-terminal .tape-panel,
+.root.theme-terminal .scope-panel {
+    background-color: #0d1a14;
+    background-image: linear-gradient(180deg, #102a1c 0%, #04100a 100%);
+    border-color: #2a4a3a;
+}
+
+.root.theme-terminal .modulation-panel {
+    background-color: #0d1a14;
+    background-image: linear-gradient(180deg, #0d2018 0%, #02080a 100%);
+    border-color: #2a4a3a;
+}
+
+.root.theme-terminal param-slider {
+    background-color: #102018;
+    color: #d0f5e0;
+}
+
+.root.theme-terminal param-slider > .fill,
+.root.theme-terminal param-slider > .filled,
+.root.theme-terminal param-slider .fill,
+.root.theme-terminal param-slider .filled {
+    background-color: #2c8a5a;
+}
+
+.root.theme-terminal param-slider.subtle {
+    background-color: #050b08;
+    color: #4a8a6a;
+}
+
+.root.theme-terminal param-slider.subtle > .fill,
+.root.theme-terminal param-slider.subtle > .filled,
+.root.theme-terminal param-slider.subtle .fill,
+.root.theme-terminal param-slider.subtle .filled {
+    background-color: #1f4a32;
+}
+
+.root.theme-terminal .toggle {
+    background-color: #102018;
+    border-color: #2a4a3a;
+    color: #6ee7a8;
+}
+
+.root.theme-terminal .toggle:hover {
+    border-color: #5a9a7a;
+    background-color: #142420;
+}
+
+.root.theme-terminal .toggle.hold:checked,
+.root.theme-terminal .toggle.reverse:checked,
+.root.theme-terminal .toggle.theme-pick:checked {
+    background-color: #5fe8a0;
+    border-color: #5fe8a0;
+    color: #04140c;
+}
+
+.root.theme-terminal .toggle.add:checked {
+    background-color: #f25f5f;
+    border-color: #f25f5f;
+    color: #04140c;
+}
+
+.root.theme-terminal .toggle.preset-btn:checked {
+    background-color: #c4f08a;
+    border-color: #c4f08a;
+    color: #04140c;
+}
+
+.root.theme-terminal dropdown {
+    background-color: #102018;
+    border-color: #2a4a3a;
+    color: #6ee7a8;
+}
+
+.root.theme-terminal dropdown:hover {
+    border-color: #5a9a7a;
+    background-color: #142420;
+}
+
+.root.theme-terminal dropdown popup {
+    background-color: #0d1a14;
+    border-color: #2a4a3a;
+}
+
+.root.theme-terminal dropdown list label,
+.root.theme-terminal dropdown .list label,
+.root.theme-terminal dropdown .title,
+.root.theme-terminal dropdown label {
+    color: #6ee7a8;
+}
+
+.root.theme-terminal dropdown list label:hover,
+.root.theme-terminal dropdown .list label:hover {
+    background-color: #1a3a2a;
+    color: #d0f5e0;
+}
+
+.root.theme-terminal textbox {
+    background-color: #102018;
+    border-color: #2a4a3a;
+    color: #6ee7a8;
+}
+
+.root.theme-terminal textbox:hover {
+    border-color: #5a9a7a;
+}
+
+.root.theme-terminal textbox:focus,
+.root.theme-terminal textbox:focus-visible {
+    border-color: #6ee7a8;
+}
+
+.root.theme-terminal tape-view {
+    background-color: #050b08;
+}
+
+.root.theme-terminal scope-view {
+    background-color: #050b08;
+}
+
+.root.theme-terminal .settings-overlay {
+    background-color: #0d1a14;
+    background-image: linear-gradient(180deg, #1a3528 0%, #04100a 100%);
+    border-color: #2a4a3a;
+}
+
+.root.theme-terminal .settings-btn {
+    color: #6ee7a8;
+}

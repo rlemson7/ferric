@@ -1,0 +1,21 @@
+[package]
+name = "ferric"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+description = "Ferric — stereo tape delay inspired by the Erica Synths Black Stereo Delay"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", features = ["assert_process_allocs"] }
+nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dirs = "5"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+opt-level = 3
