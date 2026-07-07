@@ -65,8 +65,25 @@ A stereo tape delay VST3/CLAP plugin built with [NIH-plug](https://github.com/ro
   direction wedge.
 - Real-time output oscilloscope with CRT-style phosphor graticule
 - Preset picker + Save (JSON `.ferric` files in
-  `~/Library/Audio/Presets/Realtime Media/FERRIC/` on macOS); index 0 is
-  always **Init Patch**
+  `~/Library/Audio/Presets/Realtime Media/FERRIC/` on macOS, falling back
+  to `~/Library/Application Support/FERRIC/Presets/` when the standard
+  folder isn't user-writable); index 0 is always **Init Patch**. Presets store *plain* parameter values
+  (`"time": "380"`, enum variant indices, `0`/`1` bools) so they're
+  hand-editable; loading applies them through proper host-visible
+  begin/set/end parameter gestures, and unknown ids degrade gracefully.
+  GUI scale is deliberately excluded from presets.
+
+### Factory presets
+
+16 presets ship in [`presets/`](presets/) and are installed by
+`install.sh`. Highlights: **Tape Slap** (rockabilly slapback), **Dub
+Throw** (dotted-quarter dark dub), **Eighth Ping-Pong**, **Worn
+Cassette** (heavy wow/flutter + drive), **Runaway Tape** (105 % feedback
+self-oscillation), **Reverse Swells**, **Tape Chorus** / **Tape Flanger**
+(LFO→Time modulation), **Ambient Wash** (1.4 s dark wash with random
+tone drift), **Telephone Echo** (bright thin grit), **Stereo Doubler**.
+Every shipped preset is validated by a unit test (`cargo test`): real
+parameter ids only, all values inside their parameter's range.
 - Two themes (Classic / Terminal) via the ⋯ settings modal
 - Stepped GUI scale picker (0.75× .. 2.0×) — applies on next plugin window
   open (workaround for Live's VST3 host denying mid-session resize)

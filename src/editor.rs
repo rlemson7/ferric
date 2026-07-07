@@ -1,4 +1,4 @@
-use nih_plug::prelude::{Editor, Param};
+use nih_plug::prelude::{Editor, Param, ParamPtr, Params};
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::vizia::vg::{Color as VgColor, Paint, Path};
 use nih_plug_vizia::widgets::*;
@@ -58,8 +58,56 @@ enum SettingsEvent {
     SetTheme(Theme),
 }
 
+/// Set one parameter through the GUI's raw param events — the host sees a
+/// proper begin/set/end gesture, so automation and undo behave.
+fn set_param(cx: &mut EventContext, ptr: ParamPtr, normalized: f32) {
+    cx.emit(RawParamEvent::BeginSetParameter(ptr));
+    cx.emit(RawParamEvent::SetParameterNormalized(
+        ptr,
+        normalized.clamp(0.0, 1.0),
+    ));
+    cx.emit(RawParamEvent::EndSetParameter(ptr));
+}
+
+/// Apply a preset's id → plain-value map onto the live parameters.
+/// Unknown ids and unparseable values are skipped, so presets from newer
+/// plugin versions degrade gracefully. GUI-scale (and any other id in
+/// `preset::SKIP_IDS`) is never touched.
+fn apply_preset(cx: &mut EventContext, params: &FerricParams, map: &std::collections::BTreeMap<String, String>) {
+    for (id, ptr, _group) in params.param_map() {
+        if preset::SKIP_IDS.contains(&id.as_str()) {
+            continue;
+        }
+        let Some(raw) = map.get(&id) else {
+            continue;
+        };
+        let Ok(plain) = raw.trim().parse::<f32>() else {
+            nih_plug::nih_warn!("preset: bad value for {id}: {raw}");
+            continue;
+        };
+        if !plain.is_finite() {
+            continue;
+        }
+        // Safety: `ptr` points into `params`, which the editor holds an
+        // `Arc` to for its whole lifetime.
+        let normalized = unsafe { ptr.preview_normalized(plain) };
+        set_param(cx, ptr, normalized);
+    }
+}
+
+/// Reset every parameter (except the skipped ids) to its declared default.
+fn apply_defaults(cx: &mut EventContext, params: &FerricParams) {
+    for (id, ptr, _group) in params.param_map() {
+        if preset::SKIP_IDS.contains(&id.as_str()) {
+            continue;
+        }
+        let normalized = unsafe { ptr.default_normalized_value() };
+        set_param(cx, ptr, normalized);
+    }
+}
+
 impl Model for AppData {
-    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
         event.map(|e: &SettingsEvent, _| match e {
             SettingsEvent::Toggle => self.show_settings = !self.show_settings,
             SettingsEvent::SetTheme(t) => {
@@ -78,16 +126,19 @@ impl Model for AppData {
         event.map(|e: &PresetEvent, _| match e {
             PresetEvent::LoadByIdx(idx) => {
                 if *idx == 0 {
-                    preset::reset_to_defaults(&self.params);
+                    apply_defaults(cx, &self.params);
                     self.preset_state.current_index = 0;
                     self.preset_state.current_name = "Init Patch".to_string();
                 } else {
                     let paths = preset::list_presets();
                     let preset_idx = idx - 1;
                     if let Some(path) = paths.get(preset_idx) {
-                        if let Err(err) = preset::load_preset(path, &self.params) {
-                            nih_plug::nih_warn!("preset load failed: {err}");
-                            return;
+                        match preset::read_preset(path) {
+                            Ok(map) => apply_preset(cx, &self.params, &map),
+                            Err(err) => {
+                                nih_plug::nih_warn!("preset load failed: {err}");
+                                return;
+                            }
                         }
                         self.preset_state.current_index = *idx;
                         self.preset_state.current_name = preset::preset_name(path);

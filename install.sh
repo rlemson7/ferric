@@ -49,4 +49,17 @@ if [[ -d "${CLAP_SRC}" ]]; then
     xattr -dr com.apple.quarantine "${CLAP_DIR}/${PLUGIN}.clap" 2>/dev/null || true
 fi
 
+# Prefer the standard preset location; on some systems
+# ~/Library/Audio/Presets is root-owned, so fall back to Application
+# Support (mirrors preset_dir() in src/preset.rs).
+PRESET_DIR="$HOME/Library/Audio/Presets/Realtime Media/FERRIC"
+if ! mkdir -p "${PRESET_DIR}" 2>/dev/null; then
+    PRESET_DIR="$HOME/Library/Application Support/FERRIC/Presets"
+    mkdir -p "${PRESET_DIR}"
+fi
+if compgen -G "presets/*.ferric" >/dev/null; then
+    echo "==> Installing factory presets -> ${PRESET_DIR}/"
+    cp -f presets/*.ferric "${PRESET_DIR}/"
+fi
+
 echo "Done. Rescan plugins in your DAW if needed."
