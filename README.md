@@ -31,7 +31,10 @@ A stereo tape delay VST3/CLAP plugin built with [NIH-plug](https://github.com/ro
   bypassed, so the held loop repeats cleanly without degrading; **Add**
   overdubs live input into the held loop
 - **Reverse** plays the delay tail backwards in delay-length chunks with an
-  equal-power crossfade at each chunk seam
+  equal-power crossfade at each chunk seam. During Hold the loop keeps
+  recirculating forward underneath, so you hear the held loop backwards
+  while its content stays intact — toggling Reverse off returns the
+  original loop.
 - Wow (0.45 Hz, depth scales with delay time, right channel 90° behind) &
   flutter (6.1 Hz sine + smoothed random, independent per channel) modulate
   the read head like a worn transport

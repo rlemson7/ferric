@@ -372,7 +372,7 @@ impl Engine {
         let buf_len = self.buffer_samples;
         let write = self.write;
 
-        let tap_l = read_tap(
+        let (fwd_l, rev_l) = read_tap(
             &self.buffer_l,
             buf_len,
             write,
@@ -386,7 +386,7 @@ impl Engine {
             min_d,
             sr,
         );
-        let tap_r = read_tap(
+        let (fwd_r, rev_r) = read_tap(
             &self.buffer_r,
             buf_len,
             write,
@@ -400,12 +400,19 @@ impl Engine {
             min_d,
             sr,
         );
+        // What the listener hears: the reversed tap when REVERSE is on.
+        let tap_l = if p.reverse { rev_l } else { fwd_l };
+        let tap_r = if p.reverse { rev_r } else { fwd_r };
 
         // --- Feedback path coloration. ---
         // Hold bypasses the loop coloration entirely so the held loop
         // repeats without degrading, matching the hardware's clean hold.
+        // It also always recirculates the *forward* tap: with REVERSE on,
+        // the listener hears the loop backwards while the loop content
+        // itself stays intact (re-feeding the reversed tap would scramble
+        // the held audio a little more on every chunk).
         let (fb_l, fb_r) = if p.hold {
-            (tap_l, tap_r)
+            (fwd_l, fwd_r)
         } else {
             let tone = self.tone_s.clamp(-1.0, 1.0);
             // Tone tilts the repeats: negative closes the lowpass down to
@@ -494,9 +501,12 @@ impl Engine {
     }
 }
 
-/// Advance one channel's time state and read its (possibly reversed,
-/// possibly crossfading) tap. Free function so the caller can hold `&mut`
-/// channel state alongside a shared borrow of the sample buffer.
+/// Advance one channel's time state and read its taps. Returns
+/// `(forward, reverse)`: the forward tap always reflects the current
+/// (possibly crossfading) delay; the reverse tap is the chunked backwards
+/// read when `reverse` is on, and a copy of the forward tap otherwise.
+/// Free function so the caller can hold `&mut` channel state alongside a
+/// shared borrow of the sample buffer.
 #[allow(clippy::too_many_arguments)]
 fn read_tap(
     buf: &[f32],
@@ -511,7 +521,7 @@ fn read_tap(
     fade_len: f32,
     min_d: f32,
     sr: f32,
-) -> f32 {
+) -> (f32, f32) {
     match mode {
         DelayMode::Tape => {
             // Rate-limited exponential slew: the ±0.9 samples/sample cap
@@ -539,49 +549,52 @@ fn read_tap(
     let max_offset = buf_len as f32 - 8.0;
     let clamp_off = |o: f32| o.clamp(4.0, max_offset);
 
-    if reverse {
-        // Chunked backwards read: within each chunk of length rev_d the
-        // read offset ramps 0 → 2·rev_d, i.e. the tap starts at "now" and
-        // runs backwards through the last chunk of tape. Chunk length is
-        // latched at each seam; seams get a short equal-power crossfade
-        // against the previous chunk's continuation.
-        if ch.rev_phase >= ch.rev_d || ch.rev_d < min_d * 0.5 {
-            ch.rev_phase = if ch.rev_d > 0.0 {
-                ch.rev_phase - ch.rev_d
-            } else {
-                0.0
-            };
-            ch.rev_d = ch.cur_delay.max(min_d);
-        }
-        let offset = clamp_off(2.0 * ch.rev_phase + head_mod);
-        let tap_new = hermite_read(buf, buf_len, write as f32 - offset);
-        let xf = (0.015 * sr).min(ch.rev_d * 0.5).max(1.0);
-        let out = if ch.rev_phase < xf {
-            let t = (ch.rev_phase / xf).clamp(0.0, 1.0);
-            let old_off = clamp_off(2.0 * (ch.rev_phase + ch.rev_d) + head_mod);
-            let tap_old = hermite_read(buf, buf_len, write as f32 - old_off);
-            let a = (t * std::f32::consts::FRAC_PI_2).sin();
-            let b = (t * std::f32::consts::FRAC_PI_2).cos();
-            tap_new * a + tap_old * b
-        } else {
-            tap_new
-        };
-        ch.rev_phase += 1.0;
-        return out;
-    }
-
+    // Forward tap — always computed: it feeds the output when REVERSE is
+    // off and keeps recirculating the held loop intact when REVERSE is on
+    // during hold.
     let offset = clamp_off(ch.cur_delay + head_mod);
-    let tap = hermite_read(buf, buf_len, write as f32 - offset);
+    let mut fwd = hermite_read(buf, buf_len, write as f32 - offset);
     if ch.fading {
         let t = (ch.fade_pos / fade_len).clamp(0.0, 1.0);
         let old_off = clamp_off(ch.fade_from + head_mod);
         let tap_old = hermite_read(buf, buf_len, write as f32 - old_off);
         let a = (t * std::f32::consts::FRAC_PI_2).sin();
         let b = (t * std::f32::consts::FRAC_PI_2).cos();
-        tap * a + tap_old * b
-    } else {
-        tap
+        fwd = fwd * a + tap_old * b;
     }
+
+    if !reverse {
+        return (fwd, fwd);
+    }
+
+    // Chunked backwards read: within each chunk of length rev_d the
+    // read offset ramps 0 → 2·rev_d, i.e. the tap starts at "now" and
+    // runs backwards through the last chunk of tape. Chunk length is
+    // latched at each seam; seams get a short equal-power crossfade
+    // against the previous chunk's continuation.
+    if ch.rev_phase >= ch.rev_d || ch.rev_d < min_d * 0.5 {
+        ch.rev_phase = if ch.rev_d > 0.0 {
+            ch.rev_phase - ch.rev_d
+        } else {
+            0.0
+        };
+        ch.rev_d = ch.cur_delay.max(min_d);
+    }
+    let rev_offset = clamp_off(2.0 * ch.rev_phase + head_mod);
+    let tap_new = hermite_read(buf, buf_len, write as f32 - rev_offset);
+    let xf = (0.015 * sr).min(ch.rev_d * 0.5).max(1.0);
+    let rev = if ch.rev_phase < xf {
+        let t = (ch.rev_phase / xf).clamp(0.0, 1.0);
+        let old_off = clamp_off(2.0 * (ch.rev_phase + ch.rev_d) + head_mod);
+        let tap_old = hermite_read(buf, buf_len, write as f32 - old_off);
+        let a = (t * std::f32::consts::FRAC_PI_2).sin();
+        let b = (t * std::f32::consts::FRAC_PI_2).cos();
+        tap_new * a + tap_old * b
+    } else {
+        tap_new
+    };
+    ch.rev_phase += 1.0;
+    (fwd, rev)
 }
 
 /// Feedback-loop coloration: tone lowpass → DC-safe highpass → tape drive.
@@ -886,6 +899,91 @@ mod tests {
             peak = peak.max(l.abs());
         }
         assert!(peak > 0.05, "reverse tap should produce output, {}", peak);
+    }
+
+    #[test]
+    fn reverse_mirrors_burst_position_in_time() {
+        let mut e = Engine::new();
+        e.init(48_000.0);
+        let mut p = default_params();
+        p.time_ms = 100.0; // chunk D = 4800 samples
+        p.reverse = true;
+        p.feedback = 0.0;
+        p.mix = 1.0;
+
+        // A burst at t ∈ [1000, 1100) inside chunk 0. The reversed playback
+        // of chunk 0 during chunk 1 is out(t) = in(2D·1 - t) for D = 4800,
+        // so the burst must reappear at t ∈ [8500, 8600).
+        let mut peak = 0.0f32;
+        let mut peak_idx = 0usize;
+        for i in 0..12_000 {
+            let x = if (1000..1100).contains(&i) { 1.0 } else { 0.0 };
+            let (l, r) = e.process_sample(x, x, &p);
+            assert_finite("rev-mirror", l, r);
+            // Only scan after the burst itself has passed through.
+            if i >= 2000 && l.abs() > peak {
+                peak = l.abs();
+                peak_idx = i;
+            }
+        }
+        assert!(peak > 0.5, "mirrored burst missing, peak={}", peak);
+        assert!(
+            (8450..=8650).contains(&peak_idx),
+            "mirrored burst at {} expected ~8500..8600",
+            peak_idx
+        );
+    }
+
+    #[test]
+    fn hold_plus_reverse_plays_backwards_without_scrambling_the_loop() {
+        let mut e = Engine::new();
+        e.init(48_000.0);
+        let mut p = default_params();
+        p.time_ms = 50.0; // 2400-sample loop
+        p.feedback = 0.5;
+        p.mix = 1.0;
+
+        // Prime the line with a low-level tone (low enough that the
+        // recirculation soft-clip is essentially transparent), then hold.
+        pump(&mut e, &p, 2400, |i| {
+            let s = (i as f32 * 0.05).sin() * 0.2;
+            (s, s)
+        });
+        p.hold = true;
+
+        // Cycle A — the held loop, forward.
+        let mut cycle_a = [0.0f32; 2400];
+        for s in cycle_a.iter_mut() {
+            let (l, _r) = e.process_sample(0.0, 0.0, &p);
+            *s = l;
+        }
+
+        // Two full chunks of reversed playback. Must be audible.
+        p.reverse = true;
+        let mut rev_peak = 0.0f32;
+        for _ in 0..4800 {
+            let (l, r) = e.process_sample(0.0, 0.0, &p);
+            assert_finite("hold-rev", l, r);
+            rev_peak = rev_peak.max(l.abs());
+        }
+        assert!(rev_peak > 0.1, "reversed hold should be audible, {}", rev_peak);
+
+        // Back to forward — the loop content must have survived reverse
+        // playback untouched (same phase: 3 whole cycles have elapsed).
+        p.reverse = false;
+        let mut max_diff = 0.0f32;
+        let mut peak_b = 0.0f32;
+        for a in cycle_a.iter() {
+            let (l, _r) = e.process_sample(0.0, 0.0, &p);
+            max_diff = max_diff.max((l - a).abs());
+            peak_b = peak_b.max(l.abs());
+        }
+        assert!(peak_b > 0.15, "loop died after reverse, {}", peak_b);
+        assert!(
+            max_diff < 0.02,
+            "held loop was scrambled by reverse: max diff {}",
+            max_diff
+        );
     }
 
     #[test]
